@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const saltRounds = 10;
 var jwt = require('jsonwebtoken');
 const secret = 'dsme';
+const HttpStatus = require('http-status-codes');
 
 var app = express()
 var jsonParser = bodyParser.json();
@@ -14,7 +15,7 @@ app.use(bodyParser.urlencoded({
   extended: false
 }))
 app.use(cors())
- //connection database
+//connection database
 const connection = mysql.createConnection({
   host: 'localhost',
   user: 'root',
@@ -35,43 +36,76 @@ app.post('/register', jsonParser, function (req, res, next) {
       [req.body.username, hash, req.body.first_name, req.body.last_name, req.body.birthday],
       function (err, results, fields) {
         if (err) {
-          return res.status(400).json({message:'Please fill in the information correctly.'})
+          res.json({
+            ok: false,
+            message: 'Please fill in the information correctly.',
+            code: HttpStatus.StatusCodes.BAD_REQUEST
+          })
         }
-        return res.status(200).json({message:'Register success'})
+        res.json({
+          ok: true,
+          message: 'Register success.',
+          code: HttpStatus.StatusCodes.OK
         })
-      }
-    );
+      })
   });
+});
 
 //Api Login
 app.post('/login', jsonParser, function (req, res, next) {
-  connection.execute(
-    'SELECT * FROM `users` WHERE  username = ?',
-    [req.body.username],
-    function (err, users, fields) {
-      if (err) {
-       
-        return res.status(400).json({message:err})
-      }
-      if (users.length == 0) {
-        return res.status(400).json({message:'on found users.'})
-      }
-      bcrypt.compare(req.body.password, users[0].password, function (err, result) {
-        // result == true
-        if (result) {
-          var token = jwt.sign({
-            username: users[0].username
-          }, secret, {
-            expiresIn: '1y'
-          });
-          return res.status(200).json({message:'login success.',token})
-        } else {
-      
-          return res.status(400).json({message:'loging failed.'})
+  try {
+    connection.execute(
+      'SELECT * FROM `users` WHERE  username = ?',
+      [req.body.username],
+      function (err, users, fields) {
+        if (err) {
+          res.json({
+            ok: false,
+            message: err,
+            code: HttpStatus.StatusCodes.BAD_REQUEST
+          })
         }
-      });
-    }
-  );
+        if (users.length == 0) {
+          res.json({
+            ok: false,
+            message: 'Invalid username or password!.',
+            token,
+            code: HttpStatus.StatusCodes.UNAUTHORIZED
+          })
+        }
+        bcrypt.compare(req.body.password, users[0].password, function (err, result) {
+          // result == true
+          if (result) {
+            var token = jwt.sign({
+              username: users[0].username
+            }, secret, {
+              expiresIn: '1y'
+            });
+            res.json({
+              ok: true,
+              message: 'login success.',
+              token,
+              code: HttpStatus.StatusCodes.OK
+            })
+          } else {
+            res.json({
+              ok: false,
+              message: 'Invalid username or password!.',
+              code: HttpStatus.StatusCodes.UNAUTHORIZED
+            })
+          }
+        });
+      }
+    );
+  } catch (error) {
+    console.log(error);
+    res.send({
+      ok: false,
+      error: error.message,
+      code: HttpStatus.INTERNAL_SERVER_ERROR
+    });
+
+  }
 })
 
 // Api authen check token
@@ -79,9 +113,18 @@ app.post('/authen', jsonParser, function (req, res, next) {
   try {
     const token = req.headers.authorization.split(' ')[1]
     var decoded = jwt.verify(token, secret);
-    return res.status(200).json({message:'success.'})
-  } catch(err) {
-      return res.status(400).json({message: err.message})
+    res.json({
+      ok: true,
+      message: 'success.',
+      token,
+      code: HttpStatus.StatusCodes.OK
+    })
+  } catch (err) {
+    res.json({
+      ok: false,
+      message: err.message,
+      code: HttpStatus.StatusCodes.BAD_REQUEST
+    })
   }
 
 })
