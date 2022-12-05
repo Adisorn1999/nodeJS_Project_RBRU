@@ -10,7 +10,6 @@ const HttpStatus = require('http-status-codes');
 
 var app = express()
 var jsonParser = bodyParser.json();
-
 app.use(bodyParser.urlencoded({
   extended: false
 }))
@@ -30,18 +29,30 @@ app.get('/', jsonParser, function (req, res, next) {
 
 // Api Register
 app.post('/register', jsonParser, function (req, res, next) {
-  bcrypt.hash(req.body.password, saltRounds, function (err, hash) {
-    connection.execute(
-      'INSERT INTO users(username, password, first_name, last_name, birthday) VALUES (?,?,?,?,?)',
-      [req.body.username, hash, req.body.first_name, req.body.last_name, req.body.birthday],
-      function (err, results, fields) {
-        if (err) {
-          res.json({
+  let username = req.body.username;
+  let password = req.body.password;
+  let first_name = req.body.first_name;
+  let last_name = req.body.last_name;
+  let birthday = req.body.birthday;
+
+  if (!username || !password || !first_name || !last_name || !birthday) {
+    res.json({
+      ok: false,
+      message: 'Please complete the information.',
+      code: HttpStatus.StatusCodes.BAD_REQUEST
+    });
+  }
+  bcrypt.hash(password, saltRounds, function (err, hash) {
+    connection.execute('INSERT INTO users(username, password, first_name, last_name, birthday) VALUES (?,?,?,?,?)',
+      [username, hash, first_name, last_name, birthday],
+      function (err, users, fields) {
+        if (err){
+          return res.json({
             ok: false,
-            message: 'Please fill in the information correctly.',
+            message: 'Username already taken.',
             code: HttpStatus.StatusCodes.BAD_REQUEST
-          })
-        }
+          });
+        } 
         res.json({
           ok: true,
           message: 'Register success.',
@@ -49,14 +60,17 @@ app.post('/register', jsonParser, function (req, res, next) {
         })
       })
   });
+
+
 });
 
 //Api Login
 app.post('/login', jsonParser, function (req, res, next) {
   try {
+    let username = req.body.username;
     connection.execute(
       'SELECT * FROM `users` WHERE  username = ?',
-      [req.body.username],
+      [username],
       function (err, users, fields) {
         if (err) {
           res.json({
@@ -102,7 +116,7 @@ app.post('/login', jsonParser, function (req, res, next) {
     res.send({
       ok: false,
       error: error.message,
-      code: HttpStatus.INTERNAL_SERVER_ERROR
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR
     });
 
   }
