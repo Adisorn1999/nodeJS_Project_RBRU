@@ -1,10 +1,10 @@
-var express = require("express");
-var cors = require("cors");
-var bodyParser = require("body-parser");
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
 const mysql = require("mysql2");
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
-var jwt = require("jsonwebtoken");
+const jwt = require("jsonwebtoken");
 const secret = "1EEA6DC-JAM4DP2-PHVYPBN-V0XCJ9X";
 const HttpStatus = require("http-status-codes");
 const { json } = require("body-parser");
@@ -34,7 +34,8 @@ app.get("/", jsonParser, function (req, res, next) {
 app.post("/register", jsonParser, function (req, res, next) {
   try {
     // Ger user input
-    const { username, password, first_name, last_name, birthday } = req.body;
+    const { username, password, first_name, last_name, birthday, gender } =
+      req.body;
 
     //validate user input
     if (!(username && password && first_name && last_name && birthday)) {
@@ -46,8 +47,8 @@ app.post("/register", jsonParser, function (req, res, next) {
     } else {
       bcrypt.hash(password, saltRounds, function (err, hash) {
         connection.execute(
-          "INSERT INTO users(username, password, first_name, last_name, birthday) VALUES (?,?,?,?,?)",
-          [username, hash, first_name, last_name, birthday],
+          "INSERT INTO users(username, password, first_name, last_name, birthday, gender) VALUES (?,?,?,?,?,?)",
+          [username, hash, first_name, last_name, birthday, gender],
           function (err, users, fields) {
             // check if user already exist
             // validate if user exist in our database
@@ -108,6 +109,7 @@ app.post("/login", jsonParser, function (req, res, next) {
             if (result) {
               var token = jwt.sign(
                 {
+                  user_id: users[0].user_id,
                   username: users[0].username,
                 },
                 secret,
@@ -165,7 +167,7 @@ app.post("/authen", jsonParser, function (req, res, next) {
 // get users
 app.get("/users", jsonParser, function (req, res, next) {
   connection.execute(
-    "SELECT `user_id`, `username`, `first_name`, `last_name`, `birthday` FROM `users`",
+    "SELECT `user_id`, `username`, `first_name`, `last_name`, `birthday`, `gender` FROM `users`",
     (err, result, fields) => {
       if (err) throw err;
       res.json({
@@ -177,20 +179,18 @@ app.get("/users", jsonParser, function (req, res, next) {
 });
 
 //get users by  user_id
-app.get("/users/:id", jsonParser, function (req, res, next) {
+app.get("/user/:id", jsonParser, function (req, res, next) {
   try {
     var id = req.params.id;
     connection.execute(
-      "SELECT `user_id`, `username`, `first_name`, `last_name`, `birthday` FROM `users` WHERE user_id = ?",
+      "SELECT `user_id`, `username`, `first_name`, `last_name`, `birthday`,`gender` FROM `users` WHERE user_id = ?",
       [id],
-      (err, result, fields) => {
+      (err, user, fields) => {
         if (err) throw err;
         if (id) {
-          res.json({
-            ok: true,
-            data: result,
-            code: HttpStatus.StatusCodes.OK,
-          });
+          res.json(
+            user,
+          );
         }
       }
     );
