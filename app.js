@@ -266,17 +266,19 @@ app.get("/blood/:id", jsonParser, (req, res) => {
 // add blood sugar
 app.post("/blood/:id", jsonParser, function (req, res) {
   try {
-    const { blood_level, blood_time } = req.body;
+    const { blood_level, blood_time , note} = req.body;
     const user_id = req.params.id;
-    if (!(blood_level && blood_time && user_id)) {
+    if (!(blood_level && blood_time && user_id &&note)) {
       res.json({
         ok: false,
         message: "1Please complete the information.",
+        code:HttpStatus.StatusCodes.BAD_REQUEST
       });
-    } else {
+    }
+    else {
       connection.execute(
-        "INSERT INTO `blood`( `blood_level`, `blood_time`, `user_id`) VALUES (?,?,?) ",
-        [blood_level, blood_time, user_id],
+        "INSERT INTO `blood`( `blood_level`, `blood_time`, `note`,`user_id`) VALUES (?,?,?,?) ",
+        [blood_level, blood_time,note, user_id],
         (err, users, fields) => {
           if (err) throw err;
           return res.send({
