@@ -188,9 +188,7 @@ app.get("/user/:id", jsonParser, function (req, res, next) {
       (err, user, fields) => {
         if (err) throw err;
         if (id) {
-          res.json(
-            user,
-          );
+          res.json(user);
         }
       }
     );
@@ -227,6 +225,24 @@ app.get("/username/:name", jsonParser, function (req, res, next) {
       }
     }
   );
+});
+app.put("/user/:id", jsonParser, (req, res) => {
+  const { first_name, last_name } = req.body;
+  const id = req.params.id;
+  if (!(first_name && last_name)) {
+    res.json({
+      ok: false,
+      message: "Please complete the information.",
+      code: HttpStatus.StatusCodes.BAD_REQUEST,
+    });
+  } else {
+    connection.query('UPDATE `users` SET `first_name`= ? ,`last_name`= ? WHERE user_id = ?',[first_name,last_name,id],(err,result)=>{
+      if(err) throw err;
+      return res.json({  ok: true,
+        message: " success.",
+        code: HttpStatus.StatusCodes.OK,})
+    } );
+  }
 });
 // get blood sugar all
 app.get("/bloods", jsonParser, function (req, res) {
@@ -266,19 +282,18 @@ app.get("/blood/:id", jsonParser, (req, res) => {
 // add blood sugar
 app.post("/blood/:id", jsonParser, function (req, res) {
   try {
-    const { blood_level, blood_time , note} = req.body;
+    const { blood_level, blood_time, note } = req.body;
     const user_id = req.params.id;
-    if (!(blood_level && blood_time && user_id &&note)) {
+    if (!(blood_level && blood_time && user_id && note)) {
       res.json({
         ok: false,
         message: "1Please complete the information.",
-        code:HttpStatus.StatusCodes.BAD_REQUEST
+        code: HttpStatus.StatusCodes.BAD_REQUEST,
       });
-    }
-    else {
+    } else {
       connection.execute(
-        "INSERT INTO `blood`( `blood_level`, `blood_time`, `note`,`user_id`) VALUES (?,?,?,?) ",
-        [blood_level, blood_time,note, user_id],
+        "INSERT INTO `blood`( `blood_level`, `blood_time`, `note`, `user_id`) VALUES (?,?,?,?) ",
+        [blood_level, blood_time, note, user_id],
         (err, users, fields) => {
           if (err) throw err;
           return res.send({
@@ -334,10 +349,12 @@ app.get("/medication/:id", jsonParser, (req, res) => {
 // add medication
 app.post("/medication/:id", jsonParser, function (req, res) {
   try {
-    const { medication_name, medication_amount, medication_time, time } =
+    const { medication_name, medication_amount, medication_time, time, note } =
       req.body;
     const user_id = req.params.id;
-    if (!(medication_name, medication_amount, medication_time, time, user_id)) {
+    if (
+      !(medication_name && medication_amount && medication_time && time && note)
+    ) {
       res.json({
         ok: false,
         message: "1Please complete the information.",
@@ -345,8 +362,15 @@ app.post("/medication/:id", jsonParser, function (req, res) {
       });
     } else {
       connection.execute(
-        "INSERT INTO `medication_warehouse`( `medication_name`, `medication_amount`, `medication_time`, `time`, `user_id`) VALUES (?,?,?,?,?) ",
-        [medication_name, medication_amount, medication_time, time, user_id],
+        "INSERT INTO `medication_warehouse` (`medication_name`, `medication_amount`, `medication_time`, `time`, `note`, `user_id`) VALUES (?,?,?,?,?,?);",
+        [
+          medication_name,
+          medication_amount,
+          medication_time,
+          time,
+          note,
+          user_id,
+        ],
         (err, users, fields) => {
           if (err) throw err;
           return res.send({
