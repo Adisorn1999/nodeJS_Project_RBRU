@@ -183,7 +183,7 @@ app.get("/user/:id", jsonParser, function (req, res, next) {
   try {
     var id = req.params.id;
     connection.execute(
-      "SELECT `user_id`, `username`, `first_name`, `last_name`, `birthday`,`gender` FROM `users` WHERE user_id = ?",
+      "SELECT `user_id`, `username`, `first_name`, `last_name`, `gender`, TIMESTAMPDIFF(year,birthday,CURRENT_DATE) AS year FROM users WHERE user_id = ?",
       [id],
       (err, user, fields) => {
         if (err) throw err;
@@ -236,12 +236,18 @@ app.put("/user/:id", jsonParser, (req, res) => {
       code: HttpStatus.StatusCodes.BAD_REQUEST,
     });
   } else {
-    connection.query('UPDATE `users` SET `first_name`= ? ,`last_name`= ? WHERE user_id = ?',[first_name,last_name,id],(err,result)=>{
-      if(err) throw err;
-      return res.json({  ok: true,
-        message: " success.",
-        code: HttpStatus.StatusCodes.OK,})
-    } );
+    connection.query(
+      "UPDATE `users` SET `first_name`= ? ,`last_name`= ? WHERE user_id = ?",
+      [first_name, last_name, id],
+      (err, result) => {
+        if (err) throw err;
+        return res.json({
+          ok: true,
+          message: " success.",
+          code: HttpStatus.StatusCodes.OK,
+        });
+      }
+    );
   }
 });
 // get blood sugar all
@@ -292,7 +298,7 @@ app.post("/blood/:id", jsonParser, function (req, res) {
       });
     } else {
       connection.execute(
-        "INSERT INTO `blood`( `blood_level`, `blood_time`, `note`, `user_id`) VALUES (?,?,?,?) ",
+        "INSERT INTO `blood`( `blood_level`, `blood_time`, `note`, `user_id`) VALUES (?,?,?,?)",
         [blood_level, blood_time, note, user_id],
         (err, users, fields) => {
           if (err) throw err;
@@ -362,7 +368,7 @@ app.post("/medication/:id", jsonParser, function (req, res) {
       });
     } else {
       connection.execute(
-        "INSERT INTO `medication_warehouse` (`medication_name`, `medication_amount`, `medication_time`, `time`, `note`, `user_id`) VALUES (?,?,?,?,?,?);",
+        "INSERT INTO `medication_warehouse`( `medication_name`, `medication_amount`, `medication_time`, `time`, `note`, `user_id`) VALUES (?,?,?,?,?,?)",
         [
           medication_name,
           medication_amount,
@@ -385,6 +391,36 @@ app.post("/medication/:id", jsonParser, function (req, res) {
     console.log(err);
   }
 });
+// get food
+
+app.get("/foods", jsonParser, (req, res) => {
+  connection.execute("SELECT * FROM `food`", (err, result) => {
+    if (err) throw err;
+    return res.json(result);
+  });
+});
+
+app.post("/food", jsonParser, (req, res) => {
+  const { food_name, calorie, date } = req.body;
+  if(!(food_name && calorie && date)){
+    res.json({
+      ok: false,
+      message: "1Please complete the information.",
+      code: HttpStatus.StatusCodes.BAD_REQUEST,})
+
+  }else{connection.execute(
+    "INSERT INTO `food`( `food_name`, `calorie`, `date`) VALUES (?,?,?)",[food_name,calorie,date],
+    (err, result) => {
+      if (err) throw err;
+      return res.json({
+        ok: true,
+        message: "success",
+        code: HttpStatus.StatusCodes.OK,
+      });
+    }
+  );}
+});
+
 
 app.listen(3000, function () {
   console.log("web server listening on port 3000");
