@@ -401,15 +401,15 @@ app.get("/foods", jsonParser, (req, res) => {
 });
 
 app.post("/food", jsonParser, (req, res) => {
-  const { food_name, calorie, date } = req.body;
-  if(!(food_name && calorie && date)){
+  const { food_name, calorie } = req.body;
+  if(!(food_name && calorie)){
     res.json({
       ok: false,
       message: "1Please complete the information.",
       code: HttpStatus.StatusCodes.BAD_REQUEST,})
 
   }else{connection.execute(
-    "INSERT INTO `food`( `food_name`, `calorie`, `date`) VALUES (?,?,?)",[food_name,calorie,date],
+    "INSERT INTO `food`( `food_name`, `calorie`) VALUES (?,?)",[food_name,calorie],
     (err, result) => {
       if (err) throw err;
       return res.json({
