@@ -250,6 +250,21 @@ app.put("/user/:id", jsonParser, (req, res) => {
     );
   }
 });
+//get year by user_id
+app.get("/year/:id", jsonParser, (req, res) => {
+  try {
+    const id = req.params.id;
+    connection.execute(
+      "SELECT YEAR(`blood_time`) AS year FROM blood WHERE user_id = ? GROUP BY year" ,[id],
+      (err, result) => {
+        if(err) throw err
+        return res.json(result)
+      }
+    )
+  } catch (error) {
+    console.log(error);
+  }
+});
 // get blood sugar all
 app.get("/bloods", jsonParser, function (req, res) {
   try {
@@ -285,40 +300,17 @@ app.get("/blood/:id", jsonParser, (req, res) => {
     console.log(err);
   }
 });
-//get blood sugar by user_id avg 2022
-app.get("/blood/avg2022/:id", jsonParser, (req, res) => {
+//get avg blood sugar by user_id and year
+app.get("/blood/avg/:year/:id", jsonParser, (req, res) => {
   try {
     const id = req.params.id;
+    const year = req.params.year;
     connection.execute(
-      "SELECT  YEAR(`blood_time`) AS `year`,  AVG(IF(MONTH(`blood_time`)=1,`blood_level`,0)) AS `Jan`,    AVG(IF(MONTH(`blood_time`)=2,`blood_level`,0)) AS `Feb`,  AVG(IF(MONTH(`blood_time`)=3,`blood_level`,0)) AS `Mar`,   AVG(IF(MONTH(`blood_time`)=4,`blood_level`,0)) AS `Apr`,   AVG(IF(MONTH(`blood_time`)=5,`blood_level`,0)) AS `May`,   AVG(IF(MONTH(`blood_time`)=6,`blood_level`,0)) AS `Jun`,  AVG(IF(MONTH(`blood_time`)=7,`blood_level`,0)) AS `Jul`,  AVG(IF(MONTH(`blood_time`)=8,`blood_level`,0)) AS `Aug`, AVG(IF(MONTH(`blood_time`)=9,`blood_level`,0)) AS `Sept`,  AVG(IF(MONTH(`blood_time`)=10,`blood_level`,0)) AS `Oct`,   AVG(IF(MONTH(`blood_time`)=11,`blood_level`,0)) AS `Nov`,   AVG(IF(MONTH(`blood_time`)=12,`blood_level`,0)) AS `Dec`  FROM `blood` WHERE `user_id` = ? AND YEAR(`blood_time`) = 2022  GROUP BY `year`",
-      [id],
+      "SELECT YEAR(`blood_time`) AS year ,  MONTH(`blood_time`) as month, AVG(`blood_level`) as average_blood   FROM blood   WHERE user_id = ? and YEAR(`blood_time`) = ?  GROUP BY MONTH(`blood_time`);",
+      [id, year],
       (err, result) => {
         if (err) throw err;
-        return res.json({
-          ok: true,
-          data: result,
-          code: HttpStatus.StatusCodes.OK,
-        });
-      }
-    );
-  } catch (err) {
-    console.log(err);
-  }
-});
-//get blood sugar by user_id avg 2023
-app.get("/blood/avg2023/:id", jsonParser, (req, res) => {
-  try {
-    const id = req.params.id;
-    connection.execute(
-      "SELECT  YEAR(`blood_time`) AS `year`,  AVG(IF(MONTH(`blood_time`)=1,`blood_level`,0)) AS `Jan`,    AVG(IF(MONTH(`blood_time`)=2,`blood_level`,0)) AS `Feb`,  AVG(IF(MONTH(`blood_time`)=3,`blood_level`,0)) AS `Mar`,   AVG(IF(MONTH(`blood_time`)=4,`blood_level`,0)) AS `Apr`,   AVG(IF(MONTH(`blood_time`)=5,`blood_level`,0)) AS `May`,   AVG(IF(MONTH(`blood_time`)=6,`blood_level`,0)) AS `Jun`,  AVG(IF(MONTH(`blood_time`)=7,`blood_level`,0)) AS `Jul`,  AVG(IF(MONTH(`blood_time`)=8,`blood_level`,0)) AS `Aug`, AVG(IF(MONTH(`blood_time`)=9,`blood_level`,0)) AS `Sept`,  AVG(IF(MONTH(`blood_time`)=10,`blood_level`,0)) AS `Oct`,   AVG(IF(MONTH(`blood_time`)=11,`blood_level`,0)) AS `Nov`,   AVG(IF(MONTH(`blood_time`)=12,`blood_level`,0)) AS `Dec`  FROM `blood` WHERE `user_id` = ? AND YEAR(`blood_time`) = 2023  GROUP BY `year`",
-      [id],
-      (err, result) => {
-        if (err) throw err;
-        return res.json({
-          ok: true,
-          data: result,
-          code: HttpStatus.StatusCodes.OK,
-        });
+        return res.json(result);
       }
     );
   } catch (err) {
@@ -464,27 +456,25 @@ app.post("/food", jsonParser, (req, res) => {
   }
 });
 
-
-
-app.get("/user/:id",jsonParser,(req, res)=>{
+app.get("/user/:id", jsonParser, (req, res) => {
   try {
     const id = req.params.id;
-    connection.execute("SELECT `user_id`, `username`,`first_name`, `last_name`, `birthday`, `gender` FROM `users` WHERE user_id = ?"),
-    [id],
-    (err , result , fields)=>{
-      if(err) throw err;
-      return res.json({
-        ok:true,
-        data:result,
-        code:HttpStatus.StatusCodes.OK
-      });
-    }
+    connection.execute(
+      "SELECT `user_id`, `username`,`first_name`, `last_name`, `birthday`, `gender` FROM `users` WHERE user_id = ?"
+    ),
+      [id],
+      (err, result, fields) => {
+        if (err) throw err;
+        return res.json({
+          ok: true,
+          data: result,
+          code: HttpStatus.StatusCodes.OK,
+        });
+      };
   } catch (error) {
     console.log(error);
   }
-})
-
-
+});
 
 app.listen(3000, function () {
   console.log("web server is running on port 3000");
