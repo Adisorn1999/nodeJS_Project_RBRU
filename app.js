@@ -22,6 +22,7 @@ const connection = mysql.createConnection({
   host: "localhost",
   user: "root",
   database: "dsme",
+  password:""
 });
 
 app.get("/", jsonParser, function (req, res, next) {
@@ -255,12 +256,13 @@ app.get("/year/:id", jsonParser, (req, res) => {
   try {
     const id = req.params.id;
     connection.execute(
-      "SELECT YEAR(`blood_time`) AS year FROM blood WHERE user_id = ? GROUP BY year" ,[id],
+      "SELECT YEAR(`blood_time`) AS year FROM blood WHERE user_id = ? GROUP BY year",
+      [id],
       (err, result) => {
-        if(err) throw err
-        return res.json(result)
+        if (err) throw err;
+        return res.json(result);
       }
-    )
+    );
   } catch (error) {
     console.log(error);
   }
@@ -306,7 +308,7 @@ app.get("/blood/avg/:year/:id", jsonParser, (req, res) => {
     const id = req.params.id;
     const year = req.params.year;
     connection.execute(
-      "SELECT YEAR(`blood_time`) AS year ,  MONTH(`blood_time`) as month, AVG(`blood_level`) as average_blood   FROM blood   WHERE user_id = ? and YEAR(`blood_time`) = ?  GROUP BY MONTH(`blood_time`);",
+      "SELECT YEAR(`blood_time`) AS year ,  MONTHNAME(`blood_time`) as month, AVG(`blood_level`) as average_blood   FROM blood   WHERE user_id = ? and YEAR(`blood_time`) = ?  GROUP BY MONTH(`blood_time`);",
       [id, year],
       (err, result) => {
         if (err) throw err;
@@ -316,6 +318,19 @@ app.get("/blood/avg/:year/:id", jsonParser, (req, res) => {
   } catch (err) {
     console.log(err);
   }
+});
+// get avg blood all year by user_id and year
+app.get("/blood/avgyear/:year/:id", jsonParser, (req, res) => {
+  const id = req.params.id;
+  const year = req.params.year;
+  connection.execute(
+    "SELECT YEAR(`blood_time`) AS year , AVG(`blood_level`) as average_blood   FROM blood    WHERE user_id = ? and YEAR(`blood_time`) = ?  ",
+    [id, year],
+    (err, result, fields) => {
+      if(err) throw err;
+      res.json(result);
+    }
+  );
 });
 // add blood sugar
 app.post("/blood/:id", jsonParser, function (req, res) {
@@ -353,11 +368,7 @@ app.get("/medications", jsonParser, (req, res) => {
       "SELECT * FROM `medication_warehouse`",
       (err, result) => {
         if (err) throw err;
-        return res.json({
-          ok: true,
-          data: result,
-          code: HttpStatus.StatusCodes.OK,
-        });
+        return res.json(result);
       }
     );
   } catch (err) {
@@ -369,29 +380,34 @@ app.get("/medication/:id", jsonParser, (req, res) => {
   try {
     const id = req.params.id;
     connection.execute(
-      "SELECT * FROM `medication_warehouse` WHERE user_id = ?",
+      "SELECT `medication_id`, `medication_name`, `medication_amount`, `medication_time`, `time`, `note` FROM `medication_warehouse` WHERE `user_id` = ?",
       [id],
       (err, result, fields) => {
         if (err) throw err;
-        return res.json({
-          ok: true,
-          data: result,
-          code: HttpStatus.StatusCodes.OK,
-        });
+        return res.json(result);
       }
     );
   } catch (err) {
     console.log(err);
   }
 });
+// get medication by user_id and medication_id
+app.get('/medication/:userId/:medicationId',jsonParser,(req,res)=>{
+  const userId = req.params.userId;
+  const medicationId = req.params.medicationId;
+  connection.execute("SELECT `medication_id`, `medication_name`, `medication_amount`, `medication_time`, `time`, `note`, `user_id` FROM `medication_warehouse` WHERE `user_id` = ? AND `medication_id` = ?",[userId,medicationId],(err,result)=>{
+    if(err)throw err;
+    res.json(result);
+  })
+})
 // add medication
 app.post("/medication/:id", jsonParser, function (req, res) {
   try {
-    const { medication_name, medication_amount, medication_time, time, note } =
+    const { medication_name, medication_amount, medication_time,  note } =
       req.body;
     const user_id = req.params.id;
     if (
-      !(medication_name && medication_amount && medication_time && time && note)
+      !(medication_name && medication_amount && medication_time  && note)
     ) {
       res.json({
         ok: false,
@@ -400,12 +416,11 @@ app.post("/medication/:id", jsonParser, function (req, res) {
       });
     } else {
       connection.execute(
-        "INSERT INTO `medication_warehouse`( `medication_name`, `medication_amount`, `medication_time`, `time`, `note`, `user_id`) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO `medication_warehouse`( `medication_name`, `medication_amount`, `medication_time`,  `note`, `user_id`) VALUES (?,?,?,?,?)",
         [
           medication_name,
           medication_amount,
           medication_time,
-          time,
           note,
           user_id,
         ],
