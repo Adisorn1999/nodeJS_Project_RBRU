@@ -1,3 +1,4 @@
+ require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -9,6 +10,7 @@ const secret = "1EEA6DC-JAM4DP2-PHVYPBN-V0XCJ9X";
 const HttpStatus = require("http-status-codes");
 const { json } = require("body-parser");
 
+
 var app = express();
 var jsonParser = bodyParser.json();
 app.use(
@@ -17,12 +19,13 @@ app.use(
   })
 );
 app.use(cors());
-//connection database
+
+
 const connection = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  database: "dsme",
-  password:""
+  host: process.env.DB_HOSTNAME,
+  user: process.env.DB_USERNAME,
+  database: process.env.DB_NAME,
+  password:process.env.DB_PASSWORD
 });
 
 app.get("/", jsonParser, function (req, res, next) {
@@ -83,7 +86,7 @@ app.post("/login", jsonParser, function (req, res, next) {
       res.json({
         ok: false,
         message: "Please complete the information.",
-        code: HttpStatus.StatusCodes.BAD_REQUEST,
+        code: HttpStatus.StatusCodes.BAD_REQUEST
       });
     } else {
       connection.execute(
@@ -94,7 +97,7 @@ app.post("/login", jsonParser, function (req, res, next) {
             res.json({
               ok: false,
               message: err,
-              code: HttpStatus.StatusCodes.BAD_REQUEST,
+              code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
             });
           }
           if (users.length == 0) {
@@ -438,6 +441,19 @@ app.post("/medication/:id", jsonParser, function (req, res) {
     console.log(err);
   }
 });
+//delete Medication
+app.delete('/medication/:medicationId',jsonParser,(req,res)=>{
+  const medication_id = req.params.medicationId;
+  connection.execute('DELETE FROM `medication_warehouse` WHERE `medication_id` = ?',[medication_id],(err,result)=>{
+    if(err) throw err;
+    res.json({
+      ok:true,
+      message:"success",
+      code:HttpStatus.StatusCodes.OK
+    })
+  })
+});
+
 // get food
 
 app.get("/foods", jsonParser, (req, res) => {
@@ -491,6 +507,6 @@ app.get("/user/:id", jsonParser, (req, res) => {
   }
 });
 
-app.listen(3000, function () {
-  console.log("web server is running on port 3000");
+app.listen(process.env.APP_PORT, function () {
+  console.log("web server is running on port ",process.env.APP_PORT);
 });
