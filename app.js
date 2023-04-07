@@ -1,4 +1,3 @@
- require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -9,6 +8,8 @@ const jwt = require("jsonwebtoken");
 const secret = "1EEA6DC-JAM4DP2-PHVYPBN-V0XCJ9X";
 const HttpStatus = require("http-status-codes");
 const { json } = require("body-parser");
+const dotenv =  require('dotenv').config();
+
 
 
 var app = express();
@@ -23,8 +24,8 @@ app.use(cors());
 
 const connection = mysql.createConnection({
   host: process.env.DB_HOSTNAME,
-  user: process.env.DB_USERNAME,
   database: process.env.DB_NAME,
+  user: process.env.DB_USERNAME,
   password:process.env.DB_PASSWORD
 });
 
@@ -187,7 +188,7 @@ app.get("/user/:id", jsonParser, function (req, res, next) {
   try {
     var id = req.params.id;
     connection.execute(
-      "SELECT `user_id`, `username`, `first_name`, `last_name`, `gender`, TIMESTAMPDIFF(year,birthday,CURRENT_DATE) AS year FROM users WHERE user_id = ?",
+      "SELECT `user_id`, `username`, `first_name`, `last_name`, `gender`, `birthday`, TIMESTAMPDIFF(year,birthday,CURRENT_DATE) AS year FROM users WHERE user_id = ?",
       [id],
       (err, user, fields) => {
         if (err) throw err;
