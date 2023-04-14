@@ -8,9 +8,7 @@ const jwt = require("jsonwebtoken");
 const secret = "1EEA6DC-JAM4DP2-PHVYPBN-V0XCJ9X";
 const HttpStatus = require("http-status-codes");
 const { json } = require("body-parser");
-const dotenv =  require('dotenv').config();
-
-
+const dotenv = require("dotenv").config();
 
 var app = express();
 var jsonParser = bodyParser.json();
@@ -21,12 +19,11 @@ app.use(
 );
 app.use(cors());
 
-
 const connection = mysql.createConnection({
   host: process.env.DB_HOSTNAME,
   database: process.env.DB_NAME,
   user: process.env.DB_USERNAME,
-  password:process.env.DB_PASSWORD
+  password: process.env.DB_PASSWORD,
 });
 
 app.get("/", jsonParser, function (req, res, next) {
@@ -35,7 +32,7 @@ app.get("/", jsonParser, function (req, res, next) {
   });
 });
 
-// Api Register
+// Api Register User
 app.post("/register", jsonParser, function (req, res, next) {
   try {
     // Ger user input
@@ -44,9 +41,9 @@ app.post("/register", jsonParser, function (req, res, next) {
 
     //validate user input
     if (!(username && password && first_name && last_name && birthday)) {
-      res.send({
+      res.json({
         ok: false,
-        message: "Please complete the information.",
+        message: "Please complete the information (register).",
         code: HttpStatus.StatusCodes.BAD_REQUEST,
       });
     } else {
@@ -58,14 +55,14 @@ app.post("/register", jsonParser, function (req, res, next) {
             // check if user already exist
             // validate if user exist in our database
             if (err) {
-              return res.send({
+              return res.json({
                 ok: false,
                 message: "Username already taken.",
                 code: HttpStatus.StatusCodes.BAD_REQUEST,
                 Text: err.message,
               });
             }
-            res.send({
+            res.json({
               ok: true,
               message: "Register success.",
               code: HttpStatus.StatusCodes.OK,
@@ -74,20 +71,25 @@ app.post("/register", jsonParser, function (req, res, next) {
         );
       });
     }
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      error: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
   }
 });
 
-//Api Login
+//Api Login User
 app.post("/login", jsonParser, function (req, res, next) {
   try {
     const { username, password } = req.body;
     if (!(username && password)) {
-      res.json({
+      return res.json({
         ok: false,
-        message: "Please complete the information.",
-        code: HttpStatus.StatusCodes.BAD_REQUEST
+        message: "Please complete the information(login).",
+        code: HttpStatus.StatusCodes.BAD_REQUEST,
       });
     } else {
       connection.execute(
@@ -95,7 +97,7 @@ app.post("/login", jsonParser, function (req, res, next) {
         [username],
         function (err, users, fields) {
           if (err) {
-            res.json({
+            return res.json({
               ok: false,
               message: err,
               code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
@@ -122,14 +124,14 @@ app.post("/login", jsonParser, function (req, res, next) {
                   expiresIn: "1h",
                 }
               );
-              res.json({
+              return res.json({
                 ok: true,
                 message: "login success.",
                 token,
                 code: HttpStatus.StatusCodes.OK,
               });
             } else {
-              res.json({
+              return res.json({
                 ok: false,
                 message: "Invalid username or password!.",
                 code: HttpStatus.StatusCodes.UNAUTHORIZED,
@@ -141,7 +143,7 @@ app.post("/login", jsonParser, function (req, res, next) {
     }
   } catch (error) {
     console.log(error);
-    res.send({
+    return res.json({
       ok: false,
       error: error.message,
       code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
@@ -154,17 +156,18 @@ app.post("/authen", jsonParser, function (req, res, next) {
   try {
     const token = req.headers.authorization.split(" ")[1];
     var decoded = jwt.verify(token, secret);
-    res.json({
+    return res.json({
       ok: true,
       message: "success.",
       decoded,
       code: HttpStatus.StatusCodes.OK,
     });
-  } catch (err) {
-    res.json({
+  } catch (error) {
+    console.log(error);
+    return res.json({
       ok: false,
-      message: err.message,
-      code: HttpStatus.StatusCodes.BAD_REQUEST,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
     });
   }
 });
@@ -183,94 +186,120 @@ app.get("/users", jsonParser, function (req, res, next) {
   );
 });
 
-//get users by  user_id
-app.get("/user/:id", jsonParser, function (req, res, next) {
+// API get users by  user_id
+app.get("/user/:userId", jsonParser, function (req, res, next) {
   try {
-    var id = req.params.id;
-    connection.execute(
-      "SELECT `user_id`, `username`, `first_name`, `last_name`, `gender`, `birthday`, TIMESTAMPDIFF(year,birthday,CURRENT_DATE) AS year FROM users WHERE user_id = ?",
-      [id],
-      (err, user, fields) => {
-        if (err) throw err;
-        if (id) {
-          res.json(user);
+    var userId = req.params.userId;
+    if (userId) {
+      connection.execute(
+        "SELECT `user_id`, `username`, `first_name`, `last_name`, `gender`, `birthday`, TIMESTAMPDIFF(year,birthday,CURRENT_DATE) AS year FROM users WHERE user_id = ?",
+        [userId],
+        (err, result, fields) => {
+          if (err) throw err;
+          if (result && result[0]) {
+            return res.json(result);
+          } else {
+            return res.json({
+              ok: false,
+              message: "User information not found(1)",
+              code: HttpStatus.StatusCodes.NOT_FOUND,
+            });
+          }
         }
-      }
-    );
+      );
+    } else {
+      return res.json({
+        ok: false,
+        message: "User information not found(2)",
+        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+      });
+    }
   } catch (err) {
     // thow message error (command)
     console.log(err);
-    res.json({
+    return res.json({
       ok: false,
       message: err.message,
       code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
     });
   }
 });
-
-app.get("/username/:name", jsonParser, function (req, res, next) {
-  var name = req.params.name;
-  connection.execute(
-    "SELECT `user_id`, `username`, `first_name`, `last_name`, `birthday` FROM `users` WHERE username = ?",
-    [name],
-    (err, result, fields) => {
-      if (err) throw err;
-      if (result.length == 0) {
-        res.json({
-          ok: false,
-          message: "User not found ",
-          code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
-        });
-      } else {
-        res.json({
-          ok: true,
-          result,
-          code: HttpStatus.StatusCodes.OK,
-        });
-      }
-    }
-  );
-});
-app.put("/user/:id", jsonParser, (req, res) => {
-  const { first_name, last_name } = req.body;
-  const id = req.params.id;
-  if (!(first_name && last_name)) {
-    res.json({
-      ok: false,
-      message: "Please complete the information.",
-      code: HttpStatus.StatusCodes.BAD_REQUEST,
-    });
-  } else {
-    connection.query(
-      "UPDATE `users` SET `first_name`= ? ,`last_name`= ? WHERE user_id = ?",
-      [first_name, last_name, id],
-      (err, result) => {
-        if (err) throw err;
-        return res.json({
-          ok: true,
-          message: " success.",
-          code: HttpStatus.StatusCodes.OK,
-        });
-      }
-    );
-  }
-});
-//get year by user_id
-app.get("/year/:id", jsonParser, (req, res) => {
+// API get users by name
+app.get("/username/:userName", jsonParser, function (req, res, next) {
   try {
-    const id = req.params.id;
-    connection.execute(
-      "SELECT YEAR(`blood_time`) AS year FROM blood WHERE user_id = ? GROUP BY year",
-      [id],
-      (err, result) => {
-        if (err) throw err;
-        return res.json(result);
-      }
-    );
+    var userName = req.params.userName;
+    if (userName) {
+      connection.execute(
+        "SELECT `user_id`, `username`, `first_name`, `last_name`, `birthday` FROM `users` WHERE username = ?",
+        [userName],
+        (err, result, fields) => {
+          if (err) throw err;
+          if (result && result[0]) {
+            return res.json({
+              ok: true,
+              result,
+              code: HttpStatus.StatusCodes.OK,
+            });
+          } else {
+            return res.json({
+              ok: false,
+              message: "User not found(1) ",
+              code: HttpStatus.StatusCodes.NOT_FOUND,
+            });
+          }
+        }
+      );
+    } else {
+      return res.json({
+        ok: false,
+        message: "User not found(2) ",
+        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+      });
+    }
   } catch (error) {
     console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
   }
 });
+// update Name
+app.put("/user/:userId", jsonParser, (req, res) => {
+  try {
+    const { first_name, last_name } = req.body;
+    const userId = req.params.userId;
+    if (userId) {
+      connection.execute(
+        "UPDATE `users` SET `first_name`= ? ,`last_name`= ? WHERE user_id = ?",
+        [first_name, last_name, userId],
+        (err, result) => {
+          if (err) throw err;
+          return res.json({
+            ok: true,
+            message: "Update Name success.",
+            code: HttpStatus.StatusCodes.OK,
+          });
+        }
+      );
+    } else {
+      return res.json({
+        ok: false,
+        message: "Service Unavailable ",
+        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+});
+//blood sugar levels
 // get blood sugar all
 app.get("/bloods", jsonParser, function (req, res) {
   try {
@@ -282,66 +311,176 @@ app.get("/bloods", jsonParser, function (req, res) {
         code: HttpStatus.StatusCodes.OK,
       });
     });
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
   }
 });
-//get blood sugar by user_id
-app.get("/blood/:id", jsonParser, (req, res) => {
+//get blood sugar levels of year by user_id
+app.get("/year/:userId", jsonParser, (req, res) => {
   try {
-    const id = req.params.id;
-    connection.execute(
-      "SELECT * FROM `blood` WHERE user_id = ?",
-      [id],
-      (err, result) => {
-        if (err) throw err;
-        return res.json({
-          ok: true,
-          data: result,
-          code: HttpStatus.StatusCodes.OK,
-        });
-      }
-    );
-  } catch (err) {
-    console.log(err);
-  }
-});
-//get avg blood sugar by user_id and year
-app.get("/blood/avg/:year/:id", jsonParser, (req, res) => {
-  try {
-    const id = req.params.id;
-    const year = req.params.year;
-    connection.execute(
-      "SELECT YEAR(`blood_time`) AS year ,  MONTHNAME(`blood_time`) as month, AVG(`blood_level`) as average_blood   FROM blood   WHERE user_id = ? and YEAR(`blood_time`) = ?  GROUP BY MONTH(`blood_time`);",
-      [id, year],
-      (err, result) => {
-        if (err) throw err;
-        return res.json(result);
-      }
-    );
-  } catch (err) {
-    console.log(err);
-  }
-});
-// get avg blood all year by user_id and year
-app.get("/blood/avgyear/:year/:id", jsonParser, (req, res) => {
-  const id = req.params.id;
-  const year = req.params.year;
-  connection.execute(
-    "SELECT YEAR(`blood_time`) AS year , AVG(`blood_level`) as average_blood   FROM blood    WHERE user_id = ? and YEAR(`blood_time`) = ?  ",
-    [id, year],
-    (err, result, fields) => {
-      if(err) throw err;
-      res.json(result);
+    const userId = req.params.userId;
+    if (userId) {
+      connection.execute(
+        "SELECT YEAR(`blood_time`) AS year FROM blood WHERE user_id = ? GROUP BY year",
+        [userId],
+        (err, result) => {
+          if (err) throw err;
+          if (result && result[0]) {
+            return res.json(result);
+          } else {
+            return res.json({
+              ok: false,
+              message: "No found blood sugar levels.",
+              code: HttpStatus.StatusCodes.NOT_FOUND,
+            });
+          }
+        }
+      );
+    } else {
+      return res.json({
+        ok: false,
+        message: "No found blood sugar levels .",
+        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+      });
     }
-  );
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+});
+
+//get blood sugar by user_id
+app.get("/blood/:userId", jsonParser, (req, res) => {
+  try {
+    const userId = req.params.userId;
+    if (userId) {
+      connection.execute(
+        "SELECT * FROM `blood` WHERE user_id = ?",
+        [userId],
+        (err, result) => {
+          if (err) throw err;
+          if (result && result[0]) {
+            return res.json({
+              ok: true,
+              data: result,
+              code: HttpStatus.StatusCodes.OK,
+            });
+          } else {
+            return res.json({
+              ok: false,
+              message: "No found blood sugar levels.",
+              code: HttpStatus.StatusCodes.NOT_FOUND,
+            });
+          }
+        }
+      );
+    } else {
+      return res.json({
+        ok: false,
+        message: "No found blood sugar levels .",
+        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+});
+//Get average monthly blood sugar by year user_id
+app.get("/blood/avg/:year/:userId", jsonParser, (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const year = req.params.year;
+    if (userId && year) {
+      connection.execute(
+        "SELECT YEAR(`blood_time`) AS year ,  MONTHNAME(`blood_time`) as month, AVG(`blood_level`) as average_blood   FROM blood   WHERE user_id = ? and YEAR(`blood_time`) = ?  GROUP BY MONTH(`blood_time`);",
+        [userId, year],
+        (err, result) => {
+          if (err) throw err;
+          if (result && result[0]) {
+            return res.json(result);
+          } else {
+            return res.json({
+              ok: false,
+              message: "No found blood sugar levels .",
+              code: HttpStatus.StatusCodes.NOT_FOUND,
+            });
+          }
+        }
+      );
+    } else {
+      return res.json({
+        ok: false,
+        message: "No found blood sugar levels .",
+        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+});
+// Get the average blood sugar for each year by user_id
+app.get("/blood/avgyear/:year/:userId", jsonParser, (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const year = req.params.year;
+    if (userId && year) {
+      connection.execute(
+        "SELECT YEAR(`blood_time`) AS year , AVG(`blood_level`) as average_blood   FROM blood    WHERE user_id = ? and YEAR(`blood_time`) = ?  ",
+        [userId, year],
+        (err, result, fields) => {
+          if (err) throw err;
+          if (result && result[0]) {
+            res.json(result);
+          } else {
+            return res.json({
+              ok: false,
+              message: "No found blood sugar levels .",
+              code: HttpStatus.StatusCodes.NOT_FOUND,
+            });
+          }
+        }
+      );
+    } else {
+      return res.json({
+        ok: false,
+        message: "No found blood sugar levels .",
+        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
 });
 // add blood sugar
-app.post("/blood/:id", jsonParser, function (req, res) {
+app.post("/blood/:userId", jsonParser, function (req, res) {
   try {
     const { blood_level, blood_time, note } = req.body;
-    const user_id = req.params.id;
-    if (!(blood_level && blood_time && user_id && note)) {
+    const userId = req.params.userId;
+    if (!(blood_level && blood_time && userId && note)) {
       res.json({
         ok: false,
         message: "1Please complete the information.",
@@ -350,21 +489,27 @@ app.post("/blood/:id", jsonParser, function (req, res) {
     } else {
       connection.execute(
         "INSERT INTO `blood`( `blood_level`, `blood_time`, `note`, `user_id`) VALUES (?,?,?,?)",
-        [blood_level, blood_time, note, user_id],
+        [blood_level, blood_time, note, userId],
         (err, users, fields) => {
           if (err) throw err;
           return res.send({
             ok: true,
-            message: " success.",
+            message: "add blood sugar success.",
             code: HttpStatus.StatusCodes.OK,
           });
         }
       );
     }
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
   }
 });
+//Medication
 //get medication all
 app.get("/medications", jsonParser, (req, res) => {
   try {
@@ -375,44 +520,229 @@ app.get("/medications", jsonParser, (req, res) => {
         return res.json(result);
       }
     );
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
   }
 });
 // get medication by user_id
-app.get("/medication/:id", jsonParser, (req, res) => {
+app.get("/medication/:userId", jsonParser, (req, res) => {
   try {
-    const id = req.params.id;
-    connection.execute(
-      "SELECT `medication_id`, `medication_name`, `medication_amount`, `medication_time`, `time`, `note` FROM `medication_warehouse` WHERE `user_id` = ?",
-      [id],
-      (err, result, fields) => {
-        if (err) throw err;
-        return res.json(result);
-      }
-    );
-  } catch (err) {
-    console.log(err);
+    const userId = req.params.userId;
+    if (userId) {
+      connection.execute(
+        "SELECT `medication_id`, `medication_name`, `medication_amount`, `medication_time`, `time`, `note` FROM `medication_warehouse` WHERE `user_id` = ?",
+        [userId],
+        (err, result, fields) => {
+          if (err) throw err;
+          if (result && result[0]) {
+            return res.json(result);
+          } else {
+            return res.json({
+              ok: false,
+              message: "No found Medication .",
+              code: HttpStatus.StatusCodes.NOT_FOUND,
+            });
+          }
+        }
+      );
+    } else {
+      return res.json({
+        ok: false,
+        message: "No found Medication .",
+        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
   }
 });
 // get medication by user_id and medication_id
-app.get('/medication/:userId/:medicationId',jsonParser,(req,res)=>{
-  const userId = req.params.userId;
-  const medicationId = req.params.medicationId;
-  connection.execute("SELECT `medication_id`, `medication_name`, `medication_amount`, `medication_time`, `time`, `note`, `user_id` FROM `medication_warehouse` WHERE `user_id` = ? AND `medication_id` = ?",[userId,medicationId],(err,result)=>{
-    if(err)throw err;
-    res.json(result);
-  })
-})
-// add medication
-app.post("/medication/:id", jsonParser, function (req, res) {
+app.get("/medication/:userId/:medicationId", jsonParser, (req, res) => {
   try {
-    const { medication_name, medication_amount, medication_time,  note } =
+    const userId = req.params.userId;
+    const medicationId = req.params.medicationId;
+    if (userId && medicationId) {
+      connection.execute(
+        "SELECT `medication_id`, `medication_name`, `medication_amount`, `medication_time`, `time`, `note`, `user_id` FROM `medication_warehouse` WHERE `user_id` = ? AND `medication_id` = ?",
+        [userId, medicationId],
+        (err, result) => {
+          if (err) throw err;
+          if (result && result[0]) {
+            return res.json(result);
+          } else {
+            return res.json({
+              ok: false,
+              message: "No found Medication .",
+              code: HttpStatus.StatusCodes.NOT_FOUND,
+            });
+          }
+        }
+      );
+    } else {
+      return res.json({
+        ok: false,
+        message: "No found Medication .",
+        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+});
+// add medication
+app.post("/medication/:userId", jsonParser, function (req, res) {
+  try {
+    const { medication_name, medication_amount, medication_time, note } =
       req.body;
-    const user_id = req.params.id;
-    if (
-      !(medication_name && medication_amount && medication_time  && note)
-    ) {
+    const userId = req.params.userId;
+    if (!(medication_name && medication_amount && medication_time && note)) {
+      res.json({
+        ok: false,
+        message: "Please complete the information(medication).",
+        code: HttpStatus.StatusCodes.BAD_REQUEST,
+      });
+    } else {
+      connection.execute(
+        "INSERT INTO `medication_warehouse`( `medication_name`, `medication_amount`, `medication_time`,  `note`, `user_id`) VALUES (?,?,?,?,?)",
+        [medication_name, medication_amount, medication_time, note, userId],
+        (err, users, fields) => {
+          if (err) throw err;
+          return res.json({
+            ok: true,
+            message: "add Medication success.",
+            code: HttpStatus.StatusCodes.OK,
+          });
+        }
+      );
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+});
+
+// update Medication
+app.put("/medication/:medicationId", jsonParser, (req, res) => {
+  try {
+    const { medication_name, medication_amount, medication_time, note } =
+      req.body;
+    const medicationId = req.params.medicationId;
+    if(medicationId){
+      connection.execute(
+        "UPDATE `medication_warehouse` SET `medication_name` = ?, `medication_amount` = ?, `medication_time` = ?, `note` = ? WHERE `medication_warehouse`.`medication_id` = ?;",
+        [medication_name, medication_amount, medication_time, note, medicationId],
+        (err, result, next) => {
+          if (err) throw err;
+          return res.json({
+            ok: true,
+            message: "seccess1",
+            code: HttpStatus.StatusCodes.OK,
+          });
+        
+        }
+      );
+    }else{
+      return res.json({
+        ok: false,
+        message: "Service Unavailable ",
+        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+
+   
+  
+});
+//delete Medication
+app.delete("/medication/:medicationId", jsonParser, (req, res) => {
+  try {
+    const medicationId = req.params.medicationId;
+    if(medicationId){
+      connection.execute(
+        "DELETE FROM `medication_warehouse` WHERE `medication_id` = ?",
+        [medicationId],
+        (err, result) => {
+          if (err) throw err;
+          res.json({
+            ok: true,
+            message: "delete Medication success",
+            code: HttpStatus.StatusCodes.OK,
+          });
+         }
+      );
+    }else{
+      return res.json({
+        ok: false,
+        message: "Service Unavailable ",
+        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+});
+
+// get food
+
+app.get("/foods", jsonParser, (req, res) => {
+  try {
+    connection.execute("SELECT * FROM `food`", (err, result) => {
+      if (err) throw err;
+      if(result &&result[0]){
+        return res.json(result);
+      }else{
+        return res.json({
+          ok: false,
+          message: "No found food .",
+          code: HttpStatus.StatusCodes.NOT_FOUND,
+        });
+      }
+    });
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+});
+
+app.post("/food", jsonParser, (req, res) => {
+  try {
+    const { food_name, calorie } = req.body;
+    if (!(food_name && calorie)) {
       res.json({
         ok: false,
         message: "1Please complete the information.",
@@ -420,94 +750,28 @@ app.post("/medication/:id", jsonParser, function (req, res) {
       });
     } else {
       connection.execute(
-        "INSERT INTO `medication_warehouse`( `medication_name`, `medication_amount`, `medication_time`,  `note`, `user_id`) VALUES (?,?,?,?,?)",
-        [
-          medication_name,
-          medication_amount,
-          medication_time,
-          note,
-          user_id,
-        ],
-        (err, users, fields) => {
+        "INSERT INTO `food`( `food_name`, `calorie`) VALUES (?,?)",
+        [food_name, calorie],
+        (err, result) => {
           if (err) throw err;
-          return res.send({
+          return res.json({
             ok: true,
-            message: " success.",
+            message: "success",
             code: HttpStatus.StatusCodes.OK,
           });
         }
       );
     }
-  } catch (err) {
-    console.log(err);
-  }
-});
-//delete Medication
-app.delete('/medication/:medicationId',jsonParser,(req,res)=>{
-  const medication_id = req.params.medicationId;
-  connection.execute('DELETE FROM `medication_warehouse` WHERE `medication_id` = ?',[medication_id],(err,result)=>{
-    if(err) throw err;
-    res.json({
-      ok:true,
-      message:"success",
-      code:HttpStatus.StatusCodes.OK
-    })
-  })
-});
-
-// get food
-
-app.get("/foods", jsonParser, (req, res) => {
-  connection.execute("SELECT * FROM `food`", (err, result) => {
-    if (err) throw err;
-    return res.json(result);
-  });
-});
-
-app.post("/food", jsonParser, (req, res) => {
-  const { food_name, calorie } = req.body;
-  if (!(food_name && calorie)) {
-    res.json({
-      ok: false,
-      message: "1Please complete the information.",
-      code: HttpStatus.StatusCodes.BAD_REQUEST,
-    });
-  } else {
-    connection.execute(
-      "INSERT INTO `food`( `food_name`, `calorie`) VALUES (?,?)",
-      [food_name, calorie],
-      (err, result) => {
-        if (err) throw err;
-        return res.json({
-          ok: true,
-          message: "success",
-          code: HttpStatus.StatusCodes.OK,
-        });
-      }
-    );
-  }
-});
-
-app.get("/user/:id", jsonParser, (req, res) => {
-  try {
-    const id = req.params.id;
-    connection.execute(
-      "SELECT `user_id`, `username`,`first_name`, `last_name`, `birthday`, `gender` FROM `users` WHERE user_id = ?"
-    ),
-      [id],
-      (err, result, fields) => {
-        if (err) throw err;
-        return res.json({
-          ok: true,
-          data: result,
-          code: HttpStatus.StatusCodes.OK,
-        });
-      };
   } catch (error) {
     console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
   }
 });
 
-app.listen(process.env.APP_PORT, function () {
-  console.log("web server is running on port ",process.env.APP_PORT);
+app.listen(process.env.APP_PORT,  () => {
+  console.log("web server is running on port ", process.env.APP_PORT);
 });
