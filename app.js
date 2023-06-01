@@ -399,6 +399,27 @@ app.get("/blood/:userId", jsonParser, (req, res) => {
     });
   }
 });
+// get year by user_id
+app.get("/blood/year/:userId",jsonParser,(req,res) =>{
+  const userId = req.params.userId;
+  if(userId){
+    connection.execute("SELECT YEAR(`blood_time`)AS YEAR FROM `blood` WHERE `user_id` = ? GROUP BY YEAR(`blood_time`)"
+    ,[userId],
+    (err,result)=>{
+      if(err) throw err;
+      if(result && result[0]){
+        res.json(result);
+      }else{
+        res.json({
+          ok:false,
+          message:"Not found Year",
+          code: HttpStatus.StatusCodes.BAD_REQUEST
+          
+        })
+      }
+    })
+  }
+})
 //Get average monthly blood sugar by year user_id
 app.get("/blood/avg/:year/:userId", jsonParser, (req, res) => {
   try {
@@ -416,7 +437,7 @@ app.get("/blood/avg/:year/:userId", jsonParser, (req, res) => {
             return res.json({
               ok: false,
               message: "No found blood sugar levels .",
-              code: HttpStatus.StatusCodes.NOT_FOUND,
+              code: HttpStatus.StatusCodes.BAD_REQUEST,
             });
           }
         }
