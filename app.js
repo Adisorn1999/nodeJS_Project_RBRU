@@ -270,7 +270,14 @@ app.put("/user/:userId", jsonParser, (req, res) => {
   try {
     const { first_name, last_name } = req.body;
     const userId = req.params.userId;
-    if (userId) {
+    if(!first_name && !last_name || !first_name || !last_name){
+      res.json({
+        ok: false,
+        message: "1Please complete the information.",
+        code: HttpStatus.StatusCodes.BAD_REQUEST,
+      });
+    }
+    else{
       connection.execute(
         "UPDATE `users` SET `first_name`= ? ,`last_name`= ? WHERE user_id = ?",
         [first_name, last_name, userId],
@@ -283,13 +290,13 @@ app.put("/user/:userId", jsonParser, (req, res) => {
           });
         }
       );
-    } else {
-      return res.json({
-        ok: false,
-        message: "Service Unavailable ",
-        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
-      });
-    }
+    // } else {
+    //   return res.json({
+    //     ok: false,
+    //     message: "Service Unavailable ",
+    //     code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+    //   });
+     }
   } catch (error) {
     console.log(error);
     return res.json({
