@@ -408,24 +408,33 @@ app.get("/blood/:userId", jsonParser, (req, res) => {
 });
 // get year by user_id
 app.get("/blood/year/:userId",jsonParser,(req,res) =>{
-  const userId = req.params.userId;
-  if(userId){
-    connection.execute("SELECT YEAR(`blood_time`)AS YEAR FROM `blood` WHERE `user_id` = ? GROUP BY YEAR(`blood_time`)"
-    ,[userId],
-    (err,result)=>{
-      if(err) throw err;
-      if(result && result[0]){
-        res.json(result);
-      }else{
-        res.json({
-          ok:false,
-          message:"Not found Year",
-          code: HttpStatus.StatusCodes.BAD_REQUEST
-          
-        })
-      }
-    })
-  }
+ try {
+   const userId = req.params.userId;
+   if(userId){
+     connection.execute("SELECT YEAR(`blood_time`)AS YEAR FROM `blood` WHERE `user_id` = ? GROUP BY YEAR(`blood_time`)"
+     ,[userId],
+     (err,result)=>{
+       if(err) throw err;
+       if(result && result[0]){
+         res.json(result);
+       }else{
+         res.json({
+           ok:false,
+           message:"Not found Year",
+           code: HttpStatus.StatusCodes.BAD_REQUEST
+           
+         })
+       }
+     })
+   }
+ } catch (error) {
+  console.log(error);
+  return res.json({
+    ok: false,
+    message: error.message,
+    code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+  });
+ }
 })
 //Get average monthly blood sugar by year user_id
 app.get("/blood/avg/:year/:userId", jsonParser, (req, res) => {
@@ -789,6 +798,149 @@ app.post("/food", jsonParser, (req, res) => {
           });
         }
       );
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+});
+// get Year by user_id 
+app.get("/food/year/:userId",jsonParser,(req,res) =>{
+  try {
+    const userId = req.params.userId;
+    if(userId){
+      connection.execute("SELECT YEAR(`date`)AS YEAR FROM `food_detail` WHERE `user_id` = ? GROUP BY YEAR(`date`)"
+      ,[userId],
+      (err,result)=>{
+        if(err) throw err;
+        if(result && result[0]){
+          res.json(result);
+        }else{
+          res.json({
+            ok:false,
+            message:"Not found Year",
+            code: HttpStatus.StatusCodes.BAD_REQUEST
+            
+          })
+        }
+      })
+    }
+  } catch (error) {
+   console.log(error);
+   return res.json({
+     ok: false,
+     message: error.message,
+     code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+   });
+  }
+ });
+ // get Year  avg by user_id 
+ app.get("/food/avg/:year/:userId", jsonParser, (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const year = req.params.year;
+    if (userId && year) {
+      connection.execute(
+        "SELECT YEAR(`date`) AS year ,  MONTHNAME(`date`) as month, AVG(`calorie`) as calorie   FROM food_detail   WHERE user_id = ? and YEAR(`date`) = ?  GROUP BY MONTH(`date`)",
+        [userId, year],
+        (err, result) => {
+          if (err) throw err;
+          if (result && result[0]) {
+            return res.json(result);
+          } else {
+            return res.json({
+              ok: false,
+              message: "No found blood sugar levels .",
+              code: HttpStatus.StatusCodes.BAD_REQUEST,
+            });
+          }
+        }
+      );
+    } else {
+      return res.json({
+        ok: false,
+        message: "No found blood sugar levels .",
+        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+});
+// Get the average food for each year by user_id
+app.get("/food/avgyear/:year/:userId", jsonParser, (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const year = req.params.year;
+    if (userId && year) {
+      connection.execute(
+        "SELECT YEAR(`date`) AS year , AVG(`calorie`) as average_calorie  FROM food_detail    WHERE user_id = ? and YEAR(`date`) = ? ",
+        [userId, year],
+        (err, result, fields) => {
+          if (err) throw err;
+          if (result && result[0]) {
+            res.json(result);
+          } else {
+            return res.json({
+              ok: false,
+              message: "No found calorie levels .",
+              code: HttpStatus.StatusCodes.NOT_FOUND,
+            });
+          }
+        }
+      );
+    } else {
+      return res.json({
+        ok: false,
+        message: "No found blood sugar levels .",
+        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+});
+app.get("/food/avgyear/:year/:userId", jsonParser, (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const year = req.params.year;
+    if (userId && year) {
+      connection.execute(
+        "SELECT YEAR(`date`) AS year , AVG(`calorie`) as average_blood   FROM food_detail    WHERE user_id = 7 and YEAR(`date`) = 2023        ",
+        [userId, year],
+        (err, result, fields) => {
+          if (err) throw err;
+          if (result && result[0]) {
+            res.json(result);
+          } else {
+            return res.json({
+              ok: false,
+              message: "No found blood sugar levels .",
+              code: HttpStatus.StatusCodes.NOT_FOUND,
+            });
+          }
+        }
+      );
+    } else {
+      return res.json({
+        ok: false,
+        message: "No found blood sugar levels .",
+        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+      });
     }
   } catch (error) {
     console.log(error);
