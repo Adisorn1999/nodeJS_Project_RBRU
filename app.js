@@ -808,6 +808,41 @@ app.post("/food", jsonParser, (req, res) => {
     });
   }
 });
+//
+app.post("/foodDetail/:userId", jsonParser, function (req, res) {
+  try {
+    const { food_id, calorie } =
+      req.body;
+    const userId = req.params.userId;
+    if (!(food_id  && calorie )) {
+      res.json({
+        ok: false,
+        message: "Please complete the information(medication).",
+        code: HttpStatus.StatusCodes.BAD_REQUEST,
+      });
+    } else {
+      connection.execute(
+        "INSERT INTO `food_detail` ( `user_id`, `food_id`, `calorie`, `date`) VALUES (?,?,?,current_timestamp()) ",
+        [userId,food_id,  calorie],
+        (err, users, fields) => {
+          if (err) throw err;
+          return res.json({
+            ok: true,
+            message: "add food datail success.",
+            code: HttpStatus.StatusCodes.OK,
+          });
+        }
+      );
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+});
 // get Year by user_id 
 app.get("/food/year/:userId",jsonParser,(req,res) =>{
   try {
@@ -839,43 +874,43 @@ app.get("/food/year/:userId",jsonParser,(req,res) =>{
   }
  });
  // get Year  avg by user_id 
- app.get("/food/avg/:year/:userId", jsonParser, (req, res) => {
-  try {
-    const userId = req.params.userId;
-    const year = req.params.year;
-    if (userId && year) {
-      connection.execute(
-        "SELECT YEAR(`date`) AS year ,  MONTHNAME(`date`) as month, AVG(`calorie`) as calorie   FROM food_detail   WHERE user_id = ? and YEAR(`date`) = ?  GROUP BY MONTH(`date`)",
-        [userId, year],
-        (err, result) => {
-          if (err) throw err;
-          if (result && result[0]) {
-            return res.json(result);
-          } else {
-            return res.json({
-              ok: false,
-              message: "No found blood sugar levels .",
-              code: HttpStatus.StatusCodes.BAD_REQUEST,
-            });
-          }
-        }
-      );
-    } else {
-      return res.json({
-        ok: false,
-        message: "No found blood sugar levels .",
-        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
-      });
-    }
-  } catch (error) {
-    console.log(error);
-    return res.json({
-      ok: false,
-      message: error.message,
-      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
-    });
-  }
-});
+//  app.get("/food/avg/:year/:userId", jsonParser, (req, res) => {
+//   try {
+//     const userId = req.params.userId;
+//     const year = req.params.year;
+//     if (userId && year) {
+//       connection.execute(
+//         "SELECT YEAR(`date`) AS year ,  MONTHNAME(`date`) as month, AVG(`calorie`) as calorie   FROM food_detail   WHERE user_id = ? and YEAR(`date`) = ?  GROUP BY MONTH(`date`)",
+//         [userId, year],
+//         (err, result) => {
+//           if (err) throw err;
+//           if (result && result[0]) {
+//             return res.json(result);
+//           } else {
+//             return res.json({
+//               ok: false,
+//               message: "No found blood sugar levels .",
+//               code: HttpStatus.StatusCodes.BAD_REQUEST,
+//             });
+//           }
+//         }
+//       );
+//     } else {
+//       return res.json({
+//         ok: false,
+//         message: "No found blood sugar levels .",
+//         code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+//       });
+//     }
+//   } catch (error) {
+//     console.log(error);
+//     return res.json({
+//       ok: false,
+//       message: error.message,
+//       code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+//     });
+//   }
+// });
 // Get the average food for each year by user_id
 app.get("/food/avgyear/:year/:userId", jsonParser, (req, res) => {
   try {
@@ -883,7 +918,7 @@ app.get("/food/avgyear/:year/:userId", jsonParser, (req, res) => {
     const year = req.params.year;
     if (userId && year) {
       connection.execute(
-        "SELECT YEAR(`date`) AS year , AVG(`calorie`) as average_calorie  FROM food_detail    WHERE user_id = ? and YEAR(`date`) = ? ",
+        "SELECT YEAR(food_detail.date) AS YEAR , AVG(food.calorie) AS average_calorie   FROM food_detail  LEFT JOIN  food ON food_detail.food_id=food.food_id WHERE user_id = ? and YEAR(food_detail.date) = ?    ",
         [userId, year],
         (err, result, fields) => {
           if (err) throw err;
@@ -914,23 +949,25 @@ app.get("/food/avgyear/:year/:userId", jsonParser, (req, res) => {
     });
   }
 });
-app.get("/food/avgyear/:year/:userId", jsonParser, (req, res) => {
+ // get Year  avg by user_id  and join
+
+app.get("/food/avg/:year/:userId", jsonParser, (req, res) => {
   try {
     const userId = req.params.userId;
     const year = req.params.year;
     if (userId && year) {
       connection.execute(
-        "SELECT YEAR(`date`) AS year , AVG(`calorie`) as average_blood   FROM food_detail    WHERE user_id = 7 and YEAR(`date`) = 2023        ",
+        "SELECT YEAR(food_detail.date) AS YEAR, MONTHNAME(food_detail.date) AS MONTH, AVG(food.calorie)FROM food_detail LEFT JOIN  food ON food_detail.food_id=food.food_id WHERE user_id = ? and YEAR(food_detail.date) = ? GROUP BY MONTH(food_detail.date)",
         [userId, year],
-        (err, result, fields) => {
+        (err, result) => {
           if (err) throw err;
           if (result && result[0]) {
-            res.json(result);
+            return res.json(result);
           } else {
             return res.json({
               ok: false,
               message: "No found blood sugar levels .",
-              code: HttpStatus.StatusCodes.NOT_FOUND,
+              code: HttpStatus.StatusCodes.BAD_REQUEST,
             });
           }
         }
@@ -951,7 +988,42 @@ app.get("/food/avgyear/:year/:userId", jsonParser, (req, res) => {
     });
   }
 });
-
+//TEST POST food detail with param
+app.post("/foodDetail1/:userId/:food_id", jsonParser, function (req, res) {
+  try {
+    // const { food_id, calorie } =
+    //   req.body;
+    const userId = req.params.userId;
+    const food_id = req.params.food_id;
+    if (!(food_id )) {
+      res.json({
+        ok: false,
+        message: "Please complete the information(medication).",
+        code: HttpStatus.StatusCodes.BAD_REQUEST,
+      });
+    } else {
+      connection.execute(
+        "INSERT INTO `food_detail` (`user_id`, `food_id`, `date`) VALUES ('7', '1', current_timestamp());",
+        [userId,food_id],
+        (err, users, fields) => {
+          if (err) throw err;
+          return res.json({
+            ok: true,
+            message: "add food datail success.",
+            code: HttpStatus.StatusCodes.OK,
+          });
+        }
+      );
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+});
 app.listen(process.env.APP_PORT,  () => {
   console.log("web server is running on port ", process.env.APP_PORT);
 });
