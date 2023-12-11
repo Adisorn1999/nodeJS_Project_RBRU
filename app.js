@@ -512,6 +512,43 @@ app.get("/blood/avgyear/:year/:userId", jsonParser, (req, res) => {
     });
   }
 });
+// Get the average blood sugar for each year by user_id
+app.get("/blood/desc/:userId", jsonParser, (req, res) => {
+  try {
+    const userId = req.params.userId;
+    if (userId) {
+      connection.execute(
+        "SELECT `blood_level` FROM `blood`WHERE user_id = ?  ORDER BY `blood`.`blood_id` DESC   LIMIT 1;        ",
+        [userId],
+        (err, result, fields) => {
+          if (err) throw err;
+          if (result && result[0]) {
+            res.json(result);
+          } else {
+            return res.json({
+              ok: false,
+              message: "No found blood sugar levels Uer .",
+              code: HttpStatus.StatusCodes.NOT_FOUND,
+            });
+          }
+        }
+      );
+    } else {
+      return res.json({
+        ok: false,
+        message: "No found blood sugar levels .",
+        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+});
 // add blood sugar
 app.post("/blood/:userId", jsonParser, function (req, res) {
   try {
