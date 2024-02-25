@@ -846,12 +846,11 @@ app.post("/food", jsonParser, (req, res) => {
   }
 });
 //
-app.post("/foodDetail/:userId", jsonParser, function (req, res) {
+app.post("/foodDetail/:userId/:foodId", jsonParser, function (req, res) {
   try {
-    const { food_id, calorie } =
-      req.body;
     const userId = req.params.userId;
-    if (!(food_id  && calorie )) {
+    const foodId = req.params.foodId
+    if (!(userId  && foodId )) {
       res.json({
         ok: false,
         message: "Please complete the information(medication).",
@@ -859,8 +858,8 @@ app.post("/foodDetail/:userId", jsonParser, function (req, res) {
       });
     } else {
       connection.execute(
-        "INSERT INTO `food_detail` ( `user_id`, `food_id`, `calorie`, `date`) VALUES (?,?,?,current_timestamp()) ",
-        [userId,food_id,  calorie],
+        "INSERT INTO `food_detail` ( `user_id`, `food_id`) VALUES (?,?) ",
+        [userId,foodId],
         (err, users, fields) => {
           if (err) throw err;
           return res.json({
@@ -1026,41 +1025,7 @@ app.get("/food/avg/:year/:userId", jsonParser, (req, res) => {
   }
 });
 //TEST POST food detail with param
-app.post("/foodDetail1/:userId/:food_id", jsonParser, function (req, res) {
-  try {
-    // const { food_id, calorie } =
-    //   req.body;
-    const userId = req.params.userId;
-    const food_id = req.params.food_id;
-    if (!(food_id )) {
-      res.json({
-        ok: false,
-        message: "Please complete the information(medication).",
-        code: HttpStatus.StatusCodes.BAD_REQUEST,
-      });
-    } else {
-      connection.execute(
-        "INSERT INTO `food_detail` (`user_id`, `food_id`, `date`) VALUES ('7', '1', current_timestamp());",
-        [userId,food_id],
-        (err, users, fields) => {
-          if (err) throw err;
-          return res.json({
-            ok: true,
-            message: "add food datail success.",
-            code: HttpStatus.StatusCodes.OK,
-          });
-        }
-      );
-    }
-  } catch (error) {
-    console.log(error);
-    return res.json({
-      ok: false,
-      message: error.message,
-      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
-    });
-  }
-});
+
 app.listen(process.env.APP_PORT,  () => {
   console.log("web server is running on port ", process.env.APP_PORT);
 });
