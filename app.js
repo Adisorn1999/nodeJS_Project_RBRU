@@ -474,6 +474,45 @@ app.get("/blood/avg/:year/:userId", jsonParser, (req, res) => {
     });
   }
 });
+//
+app.get("/blood/sum/:year/:userId", jsonParser, (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const year = req.params.year;
+    if (userId && year) {
+      connection.execute(
+        "SELECT `blood_id`, `blood_time`,MONTHNAME(`blood_time`) as month,`blood_level`, `note`, `user_id` FROM `blood` WHERE user_id = ? and YEAR(`blood_time`) = ? ORDER BY `month`",
+        [userId, year],
+        (err, result) => {
+          if (err) throw err;
+          if (result && result[0]) {
+            return res.json(result);
+          } else {
+            return res.json({
+              ok: false,
+              message: "No found blood sugar levels .",
+              code: HttpStatus.StatusCodes.BAD_REQUEST,
+            });
+          }
+        }
+      );
+    } else {
+      return res.json({
+        ok: false,
+        message: "No found blood sugar levels .",
+        code: HttpStatus.StatusCodes.SERVICE_UNAVAILABLE,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+});
+
 // Get the average blood sugar for each year by user_id
 app.get("/blood/avgyear/:year/:userId", jsonParser, (req, res) => {
   try {
@@ -562,13 +601,61 @@ app.post("/blood/:userId", jsonParser, function (req, res) {
       });
     } else {
       connection.execute(
-        "INSERT INTO `blood`( `blood_level`, `blood_time`, `note`, `user_id`) VALUES (?,?,?,?)",
+        "INSERT INTO `blood`( `blood_level`,blood_time, `note`, `user_id`) VALUES (?,?,?,?)",
         [blood_level, blood_time, note, userId],
         (err, users, fields) => {
-          if (err) throw err;
+          if (err){
+            return res.json({
+              ok: false,
+              message: "Please complete the information.",
+              code: HttpStatus.StatusCodes.BAD_REQUEST,
+            });
+          }
+         
           return res.send({
             ok: true,
             message: "add blood sugar success.",
+            code: HttpStatus.StatusCodes.OK,
+          });
+        }
+      );
+    }
+  } catch (error) {
+    console.log(error);
+    return res.json({
+      ok: false,
+      message: error.message,
+      code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
+    });
+  }
+});
+// update blood
+app.put("/blood/:bloodId", jsonParser, function (req, res) {
+  try {
+    const { blood_level} = req.body;
+    const bloodId = req.params.bloodId;
+    if (!(blood_level)) {
+      res.json({
+        ok: false,
+        message: "1Please complete the information.",
+        code: HttpStatus.StatusCodes.BAD_REQUEST,
+      });
+    } else {
+      connection.execute(
+        "UPDATE `blood` SET `blood_level` = ? WHERE `blood`.`blood_id` = ?;",
+        [blood_level, bloodId],
+        (err, users, fields) => {
+          if (err){
+            return res.json({
+              ok: false,
+              message: "Please complete the information.",
+              code: HttpStatus.StatusCodes.BAD_REQUEST,
+            });
+          }
+         
+          return res.send({
+            ok: true,
+            message: "update blood sugar success.",
             code: HttpStatus.StatusCodes.OK,
           });
         }
@@ -749,9 +836,6 @@ app.put("/medication/:medicationId", jsonParser, (req, res) => {
       code: HttpStatus.StatusCodes.INTERNAL_SERVER_ERROR,
     });
   }
-
-   
-  
 });
 //delete Medication
 app.delete("/medication/:medicationId", jsonParser, (req, res) => {
